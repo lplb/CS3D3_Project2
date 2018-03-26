@@ -3,15 +3,15 @@ CXXOPTIMIZE= -O2
 CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
 USERID= 17344127
 CLASSES= 
-INCL= boost_1_66_0
+INCL= /usr/local/include/boost_1_66_0
 
-all: router
+all: router server client
 
-router: $(CLASSES)
-	$(CXX) -I $(INCL) -o $@ $^ $(CXXFLAGS) $@.cpp
+router server client: $(CLASSES)
+	$(CXX) -I $(INCL) -o $@ $^ $(CXXFLAGS) $@.cpp /usr/local/include/boost_1_66_0/stage/lib/libboost_system.a
 
 clean:
-	rm -rf *.o *~ *.gch *.swp *.dSYM web-server web-client *.tar.gz
+	rm -rf *.o *~ *.gch *.swp *.dSYM router server client *.tar.gz
 
 tarball: clean
 	tar -cvf $(USERID).tar.gz *
