@@ -3,12 +3,12 @@
 
 #include <string>
 #include <map>
-#include <ifstream>
-#include <stoi>
+#include <fstream>
+#include <limits>
 
 struct Entry {
 	char dest;
-	double cost = INFINITY;
+	double cost = std::numeric_limits<double>::infinity();
 	char nextNode;
 	int nextNodePort;
 };
@@ -16,7 +16,7 @@ struct Entry {
 class RoutingTable {
 
 	private:
-		std::map<char,Entry> entries = new std::map();
+		std::map<char,Entry> entries;
 
 	public:
         void init(char name, std::string intiFilePath);

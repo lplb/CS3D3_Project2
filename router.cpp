@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
 	//initialize
 	name = argv[1][0];
-	port = argv[2];
+	port = std::stoi(argv[2]);
 
 	std::string file = "initFile.txt";
 	if (fileExists(file)) {
