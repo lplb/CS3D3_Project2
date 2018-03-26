@@ -1,42 +1,47 @@
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
+#include "RoutingTable.hpp"
 
 using boost::asio::ip::udp;
 
+RoutingTable rt;
+char name;
+int port;
+
+/**
+* Source for this method: https://techoverflow.net/2013/08/21/how-to-check-if-file-exists-using-stat/?q=/blog/2013/08/21/how-to-check-if-file-exists-using-stat/
+*
+* Check if a file exists
+* @return true if and only if the file exists, false else
+*/
+bool fileExists(const std::string& file) {
+	struct stat buf;
+	return (stat(file.c_str(), &buf) == 0);
+}
+
 int main(int argc, char* argv[]) {
-    
-  try
-  {
-    if (argc != 2)
-    {
-      std::cerr << "Usage: client <host>" << std::endl;
-      return 1;
-    }
+	if (argc != 3) {
+		std::cerr << "Usage: router <routerName>(char) <port>" << std::endl;
+		return 1;
+	}
 
-    boost::asio::io_service io_service;
+	//initialize
+	name = argv[1][0];
+	port = argv[2];
 
-    udp::resolver resolver(io_service);
-    udp::resolver::query query(udp::v4(), argv[1], "daytime");
-    udp::endpoint receiver_endpoint = *resolver.resolve(query);
+	std::string file = "initFile.txt";
+	if (fileExists(file)) {
+		rt.init(name, file);
+	}
 
-    udp::socket socket(io_service);
-    socket.open(udp::v4());
+	//create the threads for sending and receiving
+	//...
 
-    boost::array<char, 1> send_buf  = { 0 };
-    socket.send_to(boost::asio::buffer(send_buf), receiver_endpoint);
+	//infinite loop
+	for (;;) {
+		//do we need something here?
+	}
 
-    boost::array<char, 128> recv_buf;
-    udp::endpoint sender_endpoint;
-    size_t len = socket.receive_from(
-        boost::asio::buffer(recv_buf), sender_endpoint);
-
-    std::cout.write(recv_buf.data(), len);
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << e.what() << std::endl;
-  }
-
-  return 0;
+	return 0;
 }
