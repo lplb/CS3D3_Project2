@@ -2,7 +2,7 @@ CXX=g++
 CXXOPTIMIZE= -O2
 CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
 USERID= 17344127
-CLASSES= RoutingTable.o
+CLASSES= RoutingTable.o Datagram.o
 INCL= /usr/local/include/boost_1_66_0
 
 all: router server client

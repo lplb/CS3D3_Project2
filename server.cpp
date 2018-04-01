@@ -11,8 +11,10 @@
 #include <ctime>
 #include <iostream>
 #include <string>
-#include <boost/array.hpp>
+#include <array>
 #include <boost/asio.hpp>
+#include "RoutingTable.hpp"
+#include "Datagram.hpp"
 
 using boost::asio::ip::udp;
 
@@ -29,25 +31,40 @@ int main()
   {
     boost::asio::io_service io_service;
 
-    udp::socket socket(io_service, udp::endpoint(udp::v4(), 40000));
+    udp::socket socket(io_service, udp::endpoint(udp::v4(), 10001));
+    RoutingTable rt;
+    rt.init('B', "initFile.txt");
+    std::cout << rt.toString();
 
     for (;;)
     {
-      boost::array<char, 1> recv_buf;
+      std::array<char, 128> recv_buf;
       udp::endpoint remote_endpoint;
       boost::system::error_code error;
       socket.receive_from(boost::asio::buffer(recv_buf),
           remote_endpoint, 0, error);
-    std::cout << "ijlkjoj\n";
+      
+      std::vector<char> recvVec(128);
+      std::copy_n(recv_buf.begin(), 128, recvVec.begin());
+      
+      Datagram dg;
+      dg.consume(recvVec);
+      
+      rt.update(dg.getSrc(), remote_endpoint.port(), dg.getDV());
+      std::cout << rt.toString();
 
 
       if (error && error != boost::asio::error::message_size)
         throw boost::system::system_error(error);
 
-      std::string message = make_daytime_string();
+      dg.setDV(rt.getDV());
+      dg.setSrc('B');
+      std::vector<char> toSend = dg.encode();
+      std::array<char, 128> send_buf;
+      std::copy_n(toSend.begin(), 128, send_buf.begin());
 
       boost::system::error_code ignored_error;
-      socket.send_to(boost::asio::buffer(message),
+      socket.send_to(boost::asio::buffer(send_buf),
           remote_endpoint, 0, ignored_error);
     }
   }

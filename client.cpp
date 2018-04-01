@@ -9,8 +9,11 @@
 //
 
 #include <iostream>
-#include <boost/array.hpp>
+#include <array>
 #include <boost/asio.hpp>
+#include <vector>
+#include "RoutingTable.hpp"
+#include "Datagram.hpp"
 
 using boost::asio::ip::udp;
 
@@ -18,32 +21,50 @@ int main(int argc, char* argv[])
 {
   try
   {
-    if (argc != 2)
+    if (argc != 4)
     {
-      std::cerr << "Usage: client <host>" << std::endl;
+      std::cerr << "Usage: client <host> <nodeName> <port>" << std::endl;
       return 1;
     }
+    
+    RoutingTable rt;
+    rt.init(argv[2][0], "initFile.txt");
+    
+    std::cout << rt.toString();
 
     boost::asio::io_service io_service;
 
     udp::resolver resolver(io_service);
-    udp::resolver::query query(udp::v4(), argv[1], "40000");
+    udp::resolver::query query(udp::v4(), argv[1], "10001");
     udp::endpoint receiver_endpoint = *resolver.resolve(query);
 
-    udp::socket socket(io_service);
-    socket.open(udp::v4());
-
-    boost::array<char, 1> send_buf  = { 0 };
+    udp::socket socket(io_service, udp::endpoint(udp::v4(), std::stoi(argv[3])));
+    
+    Datagram dg;
+    dg.setDV(rt.getDV());
+    dg.setSrc(argv[2][0]);
+    std::vector<char> toSend = dg.encode();
+    std::array<char, 128> send_buf;
+    std::copy_n(toSend.begin(), 128, send_buf.begin());
+    
     socket.send_to(boost::asio::buffer(send_buf), receiver_endpoint);
 
     std::cout << "sent\n";
 
-    boost::array<char, 128> recv_buf;
+    std::array<char, 128> recv_buf;
     udp::endpoint sender_endpoint;
-    size_t len = socket.receive_from(
+    socket.receive_from(
         boost::asio::buffer(recv_buf), sender_endpoint);
 
-    std::cout.write(recv_buf.data(), len);
+    std::vector<char> recvVec(128);
+    std::cout << "afasf\r\n";
+    std::copy_n(recv_buf.begin(), 128, recvVec.begin());
+      
+    Datagram dg2;
+    dg2.consume(recvVec);
+      
+    rt.update(dg2.getSrc(), sender_endpoint.port(), dg2.getDV());
+    std::cout << rt.toString();
   }
   catch (std::exception& e)
   {

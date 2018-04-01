@@ -5,9 +5,9 @@
 #include <map>
 #include <fstream>
 #include <limits>
+#include <vector>
 
 struct Entry {
-	char dest;
 	double cost = std::numeric_limits<double>::infinity();
 	char nextNode;
 	int nextNodePort;
@@ -19,9 +19,23 @@ class RoutingTable {
 		std::map<char,Entry> entries;
 
 	public:
+	    // initializes the routing table using the input file
         void init(char name, std::string intiFilePath);
+        
+        // updates the routing table with a new distance vector
 		void update(char src, int srcPort, std::map<char,int> dv);
+		
+		// sets the cost to the specified node as infinity
+		void setUnreachable(char dest);
+		
+		// returns a list of the reachable neighbouring nodes' ports
+		std::vector<int> getNeighboursPorts();
+		
+		// returns the distance vector to send to the other nodes
 		std::map<char,int> getDV();
+		
+		// returns a string representation of the table's current state
+		std::string toString();
 
 };
 
