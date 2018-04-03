@@ -12,23 +12,44 @@ void RoutingTable::init(char name, std::string intFilePath) {
 			this->entries[line[2]] = entry;
 		}
 	}
+	Entry thisEntry;
+	thisEntry.nextNode = name;
+	thisEntry.nextNodePort = -1;
+	thisEntry.cost = 0;
+	this->entries[name] = thisEntry;
 }
 
 void RoutingTable::update(char src, int srcPort, std::map<char, int> dv) {
+    std::string stateBefore = this->toString();
+    
+    bool changed = false;
+    
 	for (std::map<char, int>::iterator it = dv.begin(); it != dv.end(); ++it) {
 		char dest = it->first;
-	    int newCost = it->second + this->entries[src].cost;
-		if (src == this->entries[dest].nextNode) {
+		double newCost;
+		
+		if (it->second >= std::numeric_limits<double>::infinity())
+		    newCost = std::numeric_limits<double>::infinity();
+		else
+    	    newCost = it->second + this->entries[src].cost;
+		
+		if (src == this->entries[dest].nextNode && newCost != this->entries[dest].cost) {
 		    // if dv is from nextNode, always update cost
-		    this->entries[dest].cost = newCost; 
+		    this->entries[dest].cost = newCost;
+		    changed = true;
 		} else {
 		    if (newCost < entries[dest].cost ) {
 		        // if new cost is lower than old one, update entry
 			    this->entries[dest].cost = newCost;
 			    this->entries[dest].nextNode = src;
 			    this->entries[dest].nextNodePort = srcPort;
+			    changed = true;
 		    }
 		}
+	}
+	
+	if (changed) {
+	    std::cout << this->toString(); //TODO: add stateBefore and timeStamps
 	}
 }
 
@@ -48,7 +69,7 @@ std::map<char, int> RoutingTable::getNeighbours() {
     std::map<char, int> neighbours;
     for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
 		Entry entry = it->second;
-		if (it->first == entry.nextNode && entry.cost < std::numeric_limits<double>::infinity()) {
+		if (it->first == entry.nextNode && entry.cost < std::numeric_limits<double>::infinity() && entry.nextNodePort != -1) {
 		    neighbours[it->first] = it->second.nextNodePort;
 		}
 	}
