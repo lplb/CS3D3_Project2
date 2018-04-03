@@ -5,13 +5,13 @@ USERID= 17344127
 CLASSES= RoutingTable.o Datagram.o
 INCL= /usr/local/include/boost_1_66_0
 
-all: router server client
+all: router
 
-router server client: $(CLASSES)
+router: $(CLASSES)
 	$(CXX) -I $(INCL) -o $@ $^ $(CXXFLAGS) $@.cpp /usr/local/include/boost_1_66_0/stage/lib/libboost_system.a
 
 clean:
-	rm -rf *.o *~ *.gch *.swp *.dSYM router server client *.tar.gz
+	rm -rf *.o *~ *.gch *.swp *.dSYM router *.tar.gz
 
 tarball: clean
 	tar -cvf $(USERID).tar.gz *
