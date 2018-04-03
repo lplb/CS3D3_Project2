@@ -9,7 +9,7 @@ class Datagram {
 
 private:
     char src;
-    std::map<char,int> dv;
+    std::map<char,double> dv;
     char dest;
     //data
     
@@ -19,11 +19,11 @@ public:
     
     char getSrc();
     char getDest();
-    std::map<char,int> getDV();
+    std::map<char,double> getDV();
     
     void setSrc(char src);
     void setDest(char dest);
-    void setDV(std::map<char,int> dv);
+    void setDV(std::map<char,double> dv);
     
     // encodes the datagram in a char vector
     std::vector<char> encode();

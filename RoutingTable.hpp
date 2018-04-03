@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <vector>
+#include <ctime>
 
 struct Entry {
 	double cost = std::numeric_limits<double>::infinity();
@@ -24,7 +24,7 @@ class RoutingTable {
         void init(char name, std::string intiFilePath);
         
         // updates the routing table with a new distance vector
-		void update(char src, int srcPort, std::map<char,int> dv);
+		void update(char src, int srcPort, std::map<char,double> dv);
 		
 		// sets the cost to the specified node as infinity
 		void setUnreachable(char dest);
@@ -33,7 +33,11 @@ class RoutingTable {
 		std::map<char, int> getNeighbours();
 		
 		// returns the distance vector to send to the other nodes
-		std::map<char,int> getDV();
+		std::map<char,double> getDV();
+		
+		// prints the current time, the routing table's state before change, the distance vector 
+		// producing the change and the updated routing table
+		void printChange(std::string stateBefore, std::map<char,double> dv, char src, int srcPort);
 		
 		// returns a string representation of the table's current state
 		std::string toString();

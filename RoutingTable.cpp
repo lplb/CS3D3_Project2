@@ -19,12 +19,12 @@ void RoutingTable::init(char name, std::string intFilePath) {
 	this->entries[name] = thisEntry;
 }
 
-void RoutingTable::update(char src, int srcPort, std::map<char, int> dv) {
+void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
     std::string stateBefore = this->toString();
     
     bool changed = false;
     
-	for (std::map<char, int>::iterator it = dv.begin(); it != dv.end(); ++it) {
+	for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
 		char dest = it->first;
 		double newCost;
 		
@@ -49,7 +49,7 @@ void RoutingTable::update(char src, int srcPort, std::map<char, int> dv) {
 	}
 	
 	if (changed) {
-	    std::cout << this->toString(); //TODO: add stateBefore and timeStamps
+	    printChange(stateBefore, dv, src, srcPort);
 	}
 }
 
@@ -57,8 +57,8 @@ void RoutingTable::setUnreachable(char dest) {
     this->entries[dest].cost = std::numeric_limits<double>::infinity();
 }
 
-std::map<char, int> RoutingTable::getDV() {
-	std::map<char, int> dv;
+std::map<char, double> RoutingTable::getDV() {
+	std::map<char, double> dv;
 	for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
 		dv[it->first] = it->second.cost;
 	}
@@ -74,6 +74,18 @@ std::map<char, int> RoutingTable::getNeighbours() {
 		}
 	}
 	return neighbours;
+}
+
+void RoutingTable::printChange(std::string stateBefore, std::map<char,double> dv, char src, int srcPort) {
+    std::time_t now = std::time(0);
+    std::string strdv = "Destination: Cost\n";
+    for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
+        strdv+= std::string("") + it->first + ":" + std::to_string(it->second) + "\n";
+    }
+    
+    std::cout << std::ctime(&now) << ":\nRouting table before modification:\n" << stateBefore 
+        << "\nDistance vector received from node: " << src << " via port " << std::to_string(srcPort) << ":\n"
+        << strdv << "\nRouting table after modification:\n" << this->toString() << "\n";
 }
 
 std::string RoutingTable::toString() {

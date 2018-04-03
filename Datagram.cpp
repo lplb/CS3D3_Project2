@@ -8,7 +8,7 @@ void Datagram::consume(std::vector<char> wire) {
     size_t nextCommaPos = encodedString.find(",", curPos);
     size_t nextLinePos = encodedString.find("\r\n", curPos);
     while (nextCommaPos != std::string::npos && nextLinePos != std::string::npos) {
-        this->dv[encodedString[nextCommaPos-1]] = std::stoi(encodedString.substr(nextCommaPos + 1, nextLinePos - nextCommaPos - 1));
+        this->dv[encodedString[nextCommaPos-1]] = std::stod(encodedString.substr(nextCommaPos + 1, nextLinePos - nextCommaPos - 1));
         curPos = nextLinePos + 1;
         nextCommaPos = encodedString.find(",", curPos);
         nextLinePos = encodedString.find("\r\n", curPos);
@@ -23,7 +23,7 @@ char Datagram::getDest() {
     return this->dest;
 }
 
-std::map<char,int> Datagram::getDV() {
+std::map<char,double> Datagram::getDV() {
     return this->dv;
 }
 
@@ -35,13 +35,13 @@ void Datagram::setDest(char dest) {
     this->dest = dest;
 }
 
-void Datagram::setDV(std::map<char,int> dv) {
+void Datagram::setDV(std::map<char,double> dv) {
     this->dv = dv;
 }
 
 std::vector<char> Datagram::encode() {
     std::string encodedString = std::string("") + this->src + this->dest + " ";//TODO: add type here
-    for (std::map<char, int>::iterator it = this->dv.begin(); it != this->dv.end(); ++it) {
+    for (std::map<char, double>::iterator it = this->dv.begin(); it != this->dv.end(); ++it) {
 		encodedString += std::string("") + (it->first) + ","  + std::to_string(it->second) + "\r\n";
 	}
 	std::vector<char> encodedVector(encodedString.begin(), encodedString.end());
