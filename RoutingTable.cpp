@@ -44,15 +44,15 @@ std::map<char, int> RoutingTable::getDV() {
 	return dv;
 }
 
-std::vector<int> RoutingTable::getNeighboursPorts() {
-    std::vector<int> ports;
+std::map<char, int> RoutingTable::getNeighbours() {
+    std::map<char, int> neighbours;
     for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
 		Entry entry = it->second;
 		if (it->first == entry.nextNode && entry.cost < std::numeric_limits<double>::infinity()) {
-		    ports.push_back(entry.nextNodePort);
+		    neighbours[it->first] = it->second.nextNodePort;
 		}
 	}
-	return ports;
+	return neighbours;
 }
 
 std::string RoutingTable::toString() {

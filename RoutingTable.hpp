@@ -29,7 +29,7 @@ class RoutingTable {
 		void setUnreachable(char dest);
 		
 		// returns a list of the reachable neighbouring nodes' ports
-		std::vector<int> getNeighboursPorts();
+		std::map<char, int> getNeighbours();
 		
 		// returns the distance vector to send to the other nodes
 		std::map<char,int> getDV();
