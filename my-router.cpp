@@ -22,7 +22,7 @@ std::mutex m;
 std::condition_variable cv;
 
 std::map<char, long> lastTimeReceived;
-#define check_time 5
+#define check_time 10
 
 /**
 * Source for this method: https://techoverflow.net/2013/08/21/how-to-check-if-file-exists-using-stat/?q=/blog/2013/08/21/how-to-check-if-file-exists-using-stat/
@@ -52,16 +52,38 @@ void send(int destPort, Datagram dg, boost::shared_ptr<udp::socket> socketPtr) {
     socketPtr.get()->send_to(boost::asio::buffer(send_buf), receiver_endpoint);
 }
 
-void genPacket() {
-    std::cout << "To generate and send a packet, first enter the source(capitalized char)";
+void sendDVsToNeighbours(boost::shared_ptr<udp::socket> socketPtr) {
+    std::map<char, int> neighbours = rt.getNeighbours();
+	for (std::map<char, int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it) {
+	    Datagram dg;
+	    
+	    // lock
+	    std::unique_lock<std::mutex> lk(m);
+	    //cv.wait(lk);
+	    
+	    dg.setDV(rt.getDV());
+	    
+	    // unlock
+	    lk.unlock();
+	    //cv.notify_all();
+	    
+        dg.setSrc(name);
+        dg.setDest(it->first);
+        send(it->second, dg, socketPtr);
+	}
+}
+
+void genPacket(boost::shared_ptr<udp::socket> socketPtr) {
+    std::cout << "To generate and send a packet, first enter the source(capitalized char)\n";
     char src;
     std::cin >> src;
-    std::cout >> "Now, enter the destination(capitalized character)";
+    std::cout << "Now, enter the destination(capitalized character)\n";
     char dest;
     std::cin >> dest;
-    std::cout << "Finally, enter the data to send (as a string)";
+    std::cout << "Finally, enter the data to send (as a string)\n";
     std::string data;
-    std::cin >> data;
+    std::cin.ignore();
+    std::getline(std::cin, data);
     Datagram dg;
     dg.setSrc(src);
     dg.setDest(dest);
@@ -74,52 +96,34 @@ void genPacket() {
     std::cout << "Packet sent";
     
     std::ofstream outfile;
-    outfile.open(std::string("routing-output") + this->name + ".txt");
-    outfile << "Packet sent from node " << src << " to node " << dest << "containing the following data:\n" << dg.data;
+    outfile.open(std::string("routing-output") + name + ".txt");
+    outfile << "Packet sent from node " << src << " to node " << dest << "containing the following data:\n" << dg.getData();
     
     
 }
 
-void checkAliveThread() {
+void checkAliveThread(boost::shared_ptr<udp::socket> socketPtr) {
     for(;;) {
         sleep(1);
+        bool newUnreachable = false;
         for (std::map<char, long>::iterator it = lastTimeReceived.begin(); it != lastTimeReceived.end(); ++it) {
             time_t curTime = time(0);
             if (abs(curTime - it->second) > check_time && it->first != name) {
                 std::unique_lock<std::mutex> lk(m);
-                cv.wait(lk);
+                //cv.wait(lk);
                 rt.setUnreachable(it->first);
                 lk.unlock();
-                cv.notify_one();
+                //cv.notify_all();
                 lastTimeReceived.erase(it);
-                std::cout << "\n" << it->first << " is unreachable\n" << curTime - it->second;
+                newUnreachable = true;
+                std::cout << "\n" << it->first << " is unreachable\n";
             }
+        }
+        if (newUnreachable) {
+            sendDVsToNeighbours(socketPtr);
         }
     }
 }
-
-/*void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
-    std::cout << "To generate and send a packet, enter the destination (single capitalized character)";
-    char dest;
-    std::cin >> dest;
-    std::cout << "Enter the data to send (as a string)";
-    std::string data;
-    std::cin >> data;
-    Datagram dg;
-    dg.setSrc(name);
-    dg.setDest(dest);
-    dg.setData(data);
-    
-    std::unique_lock<std::mutex> lk(m);
-    cv.wait(lk);
-    int destPort = rt.getPortTwrdsDest(dest);
-    lk.unlock();
-    cv.notify_one();
-    
-    send(destPort, dg, socketPtr);
-    
-    std::cout << "Packet sent";
-}*/
 
 void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
 
@@ -144,10 +148,10 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
 
         if (dest != name) {
             std::unique_lock<std::mutex> lk(m);
-            cv.wait(lk);
+            //cv.wait(lk);
             int destPort = rt.getPortTwrdsDest(dest);
             lk.unlock();
-            cv.notify_one();
+            //cv.notify_all();
             send(destPort, dg, socketPtr);
             std::cout << "Received packet destined for " << dest << ", resending it through port " << destPort << "\n";
             std::ofstream outfile;
@@ -157,19 +161,19 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
             if (dg.isDV()) {
                 //lock
                 std::unique_lock<std::mutex> lk(m);
-                cv.wait(lk);
+                //cv.wait(lk);
 
                 rt.update(dg.getSrc(), port, dg.getDV());
                 //std::cout << rt.toString();
 
                 //unlock
                 lk.unlock();
-                cv.notify_one();
+                //cv.notify_all();
             } else {
                 std::cout << "Received packet destined for this node (" << dest << ") containing the following data:" << dg.getData() << "\n";
                 std::ofstream outfile;
                 outfile.open(std::string("routing-output") + name + ".txt", std::ofstream::app);
-                outfile << "Received packet destined for this node (" << dest << ") containing the following data:" << dg.getData() << "\n";            }
+                outfile << "Received packet destined for this node (" << dest << ") containing the following data:" << dg.getData() << "\n";
             }
         }
     }
@@ -185,11 +189,13 @@ int main(int argc, char* argv[]) {
 	name = argv[1][0];
 	srcPort = std::stoi(argv[2]);
 	
+	std::cout << "Opening socket for node " << name << " on port " << srcPort << std::endl;
+	
     boost::shared_ptr<udp::socket> socketPtr(new udp::socket(io_service, udp::endpoint(udp::v4(), srcPort)));
 	
 	// if name==G: packet generation. No routing.
 	if (name == 'G') {
-	    genPacket();
+	    genPacket(socketPtr);
 	    return 0;
 	}
 
@@ -207,10 +213,7 @@ int main(int argc, char* argv[]) {
 	std::thread tr(receiveThread, socketPtr);
     tr.detach();
     
-    //std::thread tg(packetGenThread, socketPtr);
-    //tg.detach();
-    
-    std::thread tc(checkAliveThread);
+    std::thread tc(checkAliveThread, socketPtr);
     tc.detach();
 
 	//infinite loop
@@ -218,24 +221,7 @@ int main(int argc, char* argv[]) {
 		//sleep five seconds
 		sleep(5);
 		
-		std::map<char, int> neighbours = rt.getNeighbours();
-		for (std::map<char, int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it) {
-		    Datagram dg;
-		    
-		    // lock
-		    std::unique_lock<std::mutex> lk(m);
-		    cv.wait(lk);
-		    
-		    dg.setDV(rt.getDV());
-		    
-		    // unlock
-		    lk.unlock();
-		    cv.notify_one();
-		    
-            dg.setSrc(name);
-            dg.setDest(it->first);
-            send(it->second, dg, socketPtr);
-		}
+		sendDVsToNeighbours(socketPtr);
 		
 	}
 

@@ -16,7 +16,9 @@ void Datagram::consume(std::vector<char> wire) {
             nextLinePos = encodedString.find("\r\n", curPos);
         }
     } else {
-        this->data = encodedString.substr(3);
+        size_t startPos = 3;
+        size_t endPos = encodedString.find("\r\n\r\n", startPos);
+        this->data = encodedString.substr(startPos, endPos-startPos);
     }
 }
 
@@ -60,8 +62,12 @@ void Datagram::setData(std::string data) {
 
 std::vector<char> Datagram::encode() {
     std::string encodedString = std::string("") + this->src + this->dest + this->type;
-    for (std::map<char, double>::iterator it = this->dv.begin(); it != this->dv.end(); ++it) {
-		encodedString += std::string("") + (it->first) + ","  + std::to_string(it->second) + "\r\n";
+    if (this->isDV()) {
+        for (std::map<char, double>::iterator it = this->dv.begin(); it != this->dv.end(); ++it) {
+		    encodedString += std::string("") + (it->first) + ","  + std::to_string(it->second) + "\r\n";
+	    }
+	} else {
+	    encodedString += this->data + "\r\n\r\n";
 	}
 	std::vector<char> encodedVector(encodedString.begin(), encodedString.end());
 	return encodedVector;

@@ -10,7 +10,11 @@ void RoutingTable::printChange(std::string stateBefore, std::map<char,double> dv
         strdv+= std::string("") + it->first + ":" + std::to_string(it->second) + "\n";
     }
     
-    outfile << std::ctime(&now) << ":\nRouting table before modification:\n" << stateBefore 
+    outfile << std::ctime(&now) << "\nRouting table before modification:\n" << stateBefore 
+        << "\nDistance vector received from node: " << src << " via port " << std::to_string(srcPort) << ":\n"
+        << strdv << "\nRouting table after modification:\n" << this->toString() << "\n";
+        
+    std::cout << std::ctime(&now) << "\nRouting table before modification:\n" << stateBefore 
         << "\nDistance vector received from node: " << src << " via port " << std::to_string(srcPort) << ":\n"
         << strdv << "\nRouting table after modification:\n" << this->toString() << "\n";
 }
@@ -26,6 +30,8 @@ void RoutingTable::init(char name, std::string initFilePath) {
 			entry.nextNodePort = std::stoi(line.substr(4, 5));
 			entry.cost = std::stod(line.substr(10));
 			this->entries[line[2]] = entry;
+			this->neighbours[line[2]] = std::stoi(line.substr(4, 5));
+			this->directCostsToNeighbours[line[2]] = std::stoi(line.substr(10));
 		}
 	}
 	Entry thisEntry;
@@ -37,9 +43,12 @@ void RoutingTable::init(char name, std::string initFilePath) {
 	std::ofstream outfile;
     outfile.open(std::string("routing-output") + this->name + ".txt");
     outfile << "Initial routing table:\n" << this->toString() << "\n";
+    std::cout << "Initial routing table:\n" << this->toString() << "\n";
 }
 
 void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
+    neighbours[src] = srcPort;
+
     std::string stateBefore = this->toString();
     
     bool changed = false;
@@ -64,6 +73,15 @@ void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
 		if (src == this->entries[dest].nextNode && newCost != this->entries[dest].cost) {
 		    // if dv is from nextNode, always update cost if different (even if it is higher)
 		    this->entries[dest].cost = newCost;
+		    if (neighbours.count(dest) > 0) {
+		        double oldCost = directCostsToNeighbours[dest];
+		        if (oldCost < newCost) {
+		            this->entries[dest].cost = oldCost;
+		            this->entries[dest].nextNode = dest;
+		            this->entries[dest].nextNodePort = neighbours[dest];
+		        }
+		    }
+		    
 		    changed = true;
 		} else {
 		    if (newCost < entries[dest].cost ) {
@@ -82,26 +100,55 @@ void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
 }
 
 void RoutingTable::setUnreachable(char dest) {
+    std::string stateBefore = this->toString();
+    
     this->entries[dest].cost = std::numeric_limits<double>::infinity();
+    this->neighbours.erase(dest);
+    for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
+        Entry entry = it->second;
+        if (entry.nextNode == dest) {
+            if (neighbours.count(it->first) > 0) {
+                this->entries[it->first].cost = directCostsToNeighbours[it->first];
+                this->entries[it->first].nextNode = it->first;
+	            this->entries[it->first].nextNodePort = neighbours[it->first];
+            } else {
+                this->entries[it->first].cost = std::numeric_limits<double>::infinity();
+            }
+        }
+    }
+    
+    std::time_t now = std::time(0);
+    std::ofstream outfile;
+    outfile.open(std::string("routing-output") + this->name + ".txt", std::ofstream::app);
+    
+    outfile << std::ctime(&now) << "\nRouting table before modification:\n" << stateBefore 
+        << "\nRouting table modified after " << dest << " became unreachable.\n" 
+        << "\nRouting table after modification:\n" << this->toString() << "\n";
+        
+    std::cout << std::ctime(&now) << "\nRouting table before modification:\n" << stateBefore 
+        << "\nRouting table modified after " << dest << " became unreachable.\n" 
+        << "\nRouting table after modification:\n" << this->toString() << "\n";
 }
 
 std::map<char, double> RoutingTable::getDV() {
 	std::map<char, double> dv;
 	for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
-		dv[it->first] = it->second.cost;
+	    if (it->first >= 'A' && it->first <= 'Z')
+		    dv[it->first] = it->second.cost;
 	}
 	return dv;
 }
 
 std::map<char, int> RoutingTable::getNeighbours() {
-    std::map<char, int> neighbours;
+    /*std::map<char, int> neighbours;
     for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
 		Entry entry = it->second;
 		if (it->first == entry.nextNode && entry.cost < std::numeric_limits<double>::infinity() && it->first != this->name) {
 		    neighbours[it->first] = it->second.nextNodePort;
 		}
 	}
-	return neighbours;
+	return neighbours;*/
+	return this->neighbours;
 }
 
 int RoutingTable::getPortTwrdsDest(char dest) {

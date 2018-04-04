@@ -19,6 +19,8 @@ class RoutingTable {
 	private:
 	    // map containing the entries used for routing
 		std::map<char,Entry> entries;
+		std::map<char,int> neighbours;
+		std::map<char,double> directCostsToNeighbours;
 		char name;
 		
 		// prints the current time, the routing table's state before change, the distance vector 
