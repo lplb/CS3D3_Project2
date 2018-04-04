@@ -57,10 +57,12 @@ void checkAliveThread() {
         for (std::map<char, long>::iterator it = lastTimeReceived.begin(); it != lastTimeReceived.end(); ++it) {
             time_t curTime = time(0);
             if (abs(curTime - it->second) > check_time && it->first != name) {
-                //std::unique_lock<std::mutex> lk(m);
+                std::unique_lock<std::mutex> lk(m);
+                cv.wait(lk);
                 rt.setUnreachable(it->first);
+                lk.unlock();
+                cv.notify_one();
                 lastTimeReceived.erase(it);
-                //lk.unlock();
                 std::cout << "\n" << it->first << " is unreachable\n" << curTime - it->second;
             }
         }
@@ -80,8 +82,10 @@ void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
     dg.setData(data);
     
     std::unique_lock<std::mutex> lk(m);
+    cv.wait(lk);
     int destPort = rt.getPortTwrdsDest(dest);
     lk.unlock();
+    cv.notify_one();
     
     send(destPort, dg, socketPtr);
     
@@ -111,19 +115,23 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
 
         if (dest != name) {
             std::unique_lock<std::mutex> lk(m);
+            cv.wait(lk);
             int destPort = rt.getPortTwrdsDest(dest);
             lk.unlock();
+            cv.notify_one();
             send(destPort, dg, socketPtr);
         } else {
             if (dg.isDV()) {
                 //lock
                 std::unique_lock<std::mutex> lk(m);
+                cv.wait(lk);
 
                 rt.update(dg.getSrc(), port, dg.getDV());
                 //std::cout << rt.toString();
 
                 //unlock
                 lk.unlock();
+                cv.notify_one();
             }
         }
     }
@@ -181,13 +189,15 @@ int main(int argc, char* argv[]) {
 		for (std::map<char, int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it) {
 		    Datagram dg;
 		    
-		    // MUTEX LOCK / cond var
+		    // lock
 		    std::unique_lock<std::mutex> lk(m);
+		    cv.wait(lk);
 		    
 		    dg.setDV(rt.getDV());
 		    
 		    // unlock
 		    lk.unlock();
+		    cv.notify_one();
 		    
             dg.setSrc(name);
             dg.setDest(it->first);

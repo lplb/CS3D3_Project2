@@ -3,18 +3,21 @@
 
 void RoutingTable::printChange(std::string stateBefore, std::map<char,double> dv, char src, int srcPort) {
     std::time_t now = std::time(0);
+    std::ofstream outfile;
+    outfile.open(std::string("output") + this->name + "File.txt");
     std::string strdv = "Destination: Cost\n";
     for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
         strdv+= std::string("") + it->first + ":" + std::to_string(it->second) + "\n";
     }
     
-    std::cout << std::ctime(&now) << ":\nRouting table before modification:\n" << stateBefore 
+    outfile << std::ctime(&now) << ":\nRouting table before modification:\n" << stateBefore 
         << "\nDistance vector received from node: " << src << " via port " << std::to_string(srcPort) << ":\n"
         << strdv << "\nRouting table after modification:\n" << this->toString() << "\n";
 }
 
-void RoutingTable::init(char name, std::string intFilePath) {
-	std::ifstream ifs(intFilePath);
+void RoutingTable::init(char name, std::string initFilePath) {
+    this->name = name;
+	std::ifstream ifs(initFilePath);
 	std::string line;
 	while (std::getline(ifs, line)) {
 		if (line[0] == name) {
@@ -30,6 +33,10 @@ void RoutingTable::init(char name, std::string intFilePath) {
 	thisEntry.nextNodePort = -1;
 	thisEntry.cost = 0;
 	this->entries[name] = thisEntry;
+	
+	std::ofstream outfile;
+    outfile.open(std::string("output") + this->name + "File.txt");
+    outfile << "Initial routing table:\n" << this->toString() << "\n";
 }
 
 void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
@@ -82,7 +89,7 @@ std::map<char, int> RoutingTable::getNeighbours() {
     std::map<char, int> neighbours;
     for (std::map<char, Entry>::iterator it = entries.begin(); it != entries.end(); ++it) {
 		Entry entry = it->second;
-		if (it->first == entry.nextNode && entry.cost < std::numeric_limits<double>::infinity() && entry.nextNodePort != -1) {
+		if (it->first == entry.nextNode && entry.cost < std::numeric_limits<double>::infinity() && it->first != this->name) {
 		    neighbours[it->first] = it->second.nextNodePort;
 		}
 	}

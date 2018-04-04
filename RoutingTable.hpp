@@ -19,6 +19,7 @@ class RoutingTable {
 	private:
 	    // map containing the entries used for routing
 		std::map<char,Entry> entries;
+		char name;
 		
 		// prints the current time, the routing table's state before change, the distance vector 
 		// producing the change and the updated routing table
@@ -26,7 +27,7 @@ class RoutingTable {
 
 	public:
 	    // initializes the routing table using the input file
-        void init(char name, std::string intiFilePath);
+        void init(char name, std::string initFilePath);
         
         // updates the routing table with a new distance vector
 		void update(char src, int srcPort, std::map<char,double> dv);

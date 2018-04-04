@@ -1,13 +1,25 @@
 #!/bin/bash
 
-gnome-terminal -e 'bash -c "./router A 10000 topology.txt | tee -w outputAfile.txt" & sleep 1;'
+#gnome-terminal -e 'bash -c "./router A 10000 | tee -w outputAfile.txt" & sleep 1;'
 
-gnome-terminal -e 'bash -c "./router B 10001 topology.txt | tee -w outputBfile.txt" & sleep 1;'
+#gnome-terminal -e 'bash -c "./router B 10001 | tee -w outputBfile.txt" & sleep 1;'
 
-gnome-terminal -e 'bash -c "./router C 10002 topology.txt | tee -w outputCfile.txt" & sleep 1;'
+#gnome-terminal -e 'bash -c "./router C 10002 | tee -w outputCfile.txt" & sleep 1;'
 
-gnome-terminal -e 'bash -c "./router D 10003 topology.txt | tee -w outputDfile.txt" & sleep 1;'
+#gnome-terminal -e 'bash -c "./router D 10003 | tee -w outputDfile.txt" & sleep 1;'
 
-gnome-terminal -e 'bash -c "./router E 10004 topology.txt | tee -w outputEfile.txt" & sleep 1;'
+#gnome-terminal -e 'bash -c "./router E 10004 | tee -w outputEfile.txt" & sleep 1;'
 
-gnome-terminal -e 'bash -c "./router F 10005 topology.txt | tee -w outputFfile.txt" & sleep 1;'
+#gnome-terminal -e 'bash -c "./router F 10005 | tee -w outputFfile.txt" & sleep 1;'
+
+gnome-terminal -e "./router A 10000;" 
+
+gnome-terminal -e "./router B 10001;"
+ 
+gnome-terminal -e "./router C 10002;" 
+
+gnome-terminal -e "./router D 10003;" 
+
+gnome-terminal -e "./router E 10004;" 
+
+gnome-terminal -e "./router F 10005;" 
