@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -51,6 +52,34 @@ void send(int destPort, Datagram dg, boost::shared_ptr<udp::socket> socketPtr) {
     socketPtr.get()->send_to(boost::asio::buffer(send_buf), receiver_endpoint);
 }
 
+void genPacket() {
+    std::cout << "To generate and send a packet, first enter the source(capitalized char)";
+    char src;
+    std::cin >> src;
+    std::cout >> "Now, enter the destination(capitalized character)";
+    char dest;
+    std::cin >> dest;
+    std::cout << "Finally, enter the data to send (as a string)";
+    std::string data;
+    std::cin >> data;
+    Datagram dg;
+    dg.setSrc(src);
+    dg.setDest(dest);
+    dg.setData(data);
+    
+    int srcPort = 10000 + src - 'A';
+    
+    send(srcPort, dg, socketPtr);
+    
+    std::cout << "Packet sent";
+    
+    std::ofstream outfile;
+    outfile.open(std::string("routing-output") + this->name + ".txt");
+    outfile << "Packet sent from node " << src << " to node " << dest << "containing the following data:\n" << dg.data;
+    
+    
+}
+
 void checkAliveThread() {
     for(;;) {
         sleep(1);
@@ -69,7 +98,7 @@ void checkAliveThread() {
     }
 }
 
-void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
+/*void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
     std::cout << "To generate and send a packet, enter the destination (single capitalized character)";
     char dest;
     std::cin >> dest;
@@ -90,7 +119,7 @@ void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
     send(destPort, dg, socketPtr);
     
     std::cout << "Packet sent";
-}
+}*/
 
 void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
 
@@ -120,6 +149,10 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
             lk.unlock();
             cv.notify_one();
             send(destPort, dg, socketPtr);
+            std::cout << "Received packet destined for " << dest << ", resending it through port " << destPort << "\n";
+            std::ofstream outfile;
+            outfile.open(std::string("routing-output") + name + ".txt", std::ofstream::app);
+            outfile << "Received packet destined for " << dest << ", resending it through port " << destPort << "\n";
         } else {
             if (dg.isDV()) {
                 //lock
@@ -132,6 +165,11 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
                 //unlock
                 lk.unlock();
                 cv.notify_one();
+            } else {
+                std::cout << "Received packet destined for this node (" << dest << ") containing the following data:" << dg.getData() << "\n";
+                std::ofstream outfile;
+                outfile.open(std::string("routing-output") + name + ".txt", std::ofstream::app);
+                outfile << "Received packet destined for this node (" << dest << ") containing the following data:" << dg.getData() << "\n";            }
             }
         }
     }
@@ -147,18 +185,13 @@ int main(int argc, char* argv[]) {
 	name = argv[1][0];
 	srcPort = std::stoi(argv[2]);
 	
-	//udp::acceptor acceptor(io_service);
-    //boost::asio::socket_base::reuse_address option(true);
-    //acceptor.set_option(option);
-    
-	//udp::socket socket(io_service, udp::endpoint(udp::v4(), srcPort));
-	
     boost::shared_ptr<udp::socket> socketPtr(new udp::socket(io_service, udp::endpoint(udp::v4(), srcPort)));
 	
-	
-	//socketPtr = std::make_shared<udp::socket>(socket);
-	
-	
+	// if name==G: packet generation. No routing.
+	if (name == 'G') {
+	    genPacket();
+	    return 0;
+	}
 
 	std::string file = "initFile.txt";
 	if (fileExists(file)) {
@@ -182,8 +215,8 @@ int main(int argc, char* argv[]) {
 
 	//infinite loop
 	for (;;) {
-		//sleep one second
-		sleep(1);
+		//sleep five seconds
+		sleep(5);
 		
 		std::map<char, int> neighbours = rt.getNeighbours();
 		for (std::map<char, int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it) {

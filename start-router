@@ -12,14 +12,14 @@
 
 #gnome-terminal -e 'bash -c "./router F 10005 | tee -w outputFfile.txt" & sleep 1;'
 
-gnome-terminal -e "./router A 10000;" 
+gnome-terminal -e "./my-router A 10000;" 
 
-gnome-terminal -e "./router B 10001;"
+gnome-terminal -e "./my-router B 10001;"
  
-gnome-terminal -e "./router C 10002;" 
+gnome-terminal -e "./my-router C 10002;" 
 
-gnome-terminal -e "./router D 10003;" 
+gnome-terminal -e "./my-router D 10003;" 
 
-gnome-terminal -e "./router E 10004;" 
+gnome-terminal -e "./my-router E 10004;" 
 
-gnome-terminal -e "./router F 10005;" 
+gnome-terminal -e "./my-router F 10005;" 

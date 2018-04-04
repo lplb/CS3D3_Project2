@@ -4,7 +4,7 @@
 void RoutingTable::printChange(std::string stateBefore, std::map<char,double> dv, char src, int srcPort) {
     std::time_t now = std::time(0);
     std::ofstream outfile;
-    outfile.open(std::string("output") + this->name + "File.txt");
+    outfile.open(std::string("routing-output") + this->name + ".txt", std::ofstream::app);
     std::string strdv = "Destination: Cost\n";
     for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
         strdv+= std::string("") + it->first + ":" + std::to_string(it->second) + "\n";
@@ -35,7 +35,7 @@ void RoutingTable::init(char name, std::string initFilePath) {
 	this->entries[name] = thisEntry;
 	
 	std::ofstream outfile;
-    outfile.open(std::string("output") + this->name + "File.txt");
+    outfile.open(std::string("routing-output") + this->name + ".txt");
     outfile << "Initial routing table:\n" << this->toString() << "\n";
 }
 
@@ -44,6 +44,14 @@ void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
     
     bool changed = false;
     
+    // If current cost to src node is infinity, change it to cost advertised in dv
+    if (this->entries[src].cost >= std::numeric_limits<double>::infinity()) {
+        entries[src].cost = dv[name];
+        entries[src].nextNode = src;
+        entries[src].nextNodePort = srcPort;
+        changed = true;
+    }
+    
 	for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
 		char dest = it->first;
 		double newCost;
@@ -51,10 +59,10 @@ void RoutingTable::update(char src, int srcPort, std::map<char, double> dv) {
 		if (it->second >= std::numeric_limits<double>::infinity())
 		    newCost = std::numeric_limits<double>::infinity();
 		else
-    	    newCost = it->second + this->entries[src].cost;
+            newCost = it->second + this->entries[src].cost;
 		
 		if (src == this->entries[dest].nextNode && newCost != this->entries[dest].cost) {
-		    // if dv is from nextNode, always update cost
+		    // if dv is from nextNode, always update cost if different (even if it is higher)
 		    this->entries[dest].cost = newCost;
 		    changed = true;
 		} else {
