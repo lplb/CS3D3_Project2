@@ -29,37 +29,65 @@ bool fileExists(const std::string& file) {
 	return (stat(file.c_str(), &buf) == 0);
 }
 
+void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
+    std::cout << "To generate and send a packet, enter the destination (single capitalized character)";
+    char dest;
+    std::cin >> dest;
+    std::cout << "Enter the data to send (as a string)";
+    std::string data;
+    std::scin >> data;
+    DG dg;
+    dg.setSrc(name);
+    dg.setDest(dest);
+    dg.setData(data);
+    
+    std::unique_lock<std::mutex> lk(m);
+    int destPort = rt.getPortTwrdsDest(dest);
+    lk.unlock();
+    
+    send(destPort, dg, socketPtr);
+    
+    std::cout << "Packet sent";
+}
 
 void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
 
     //udp::socket socket(io_service, udp::endpoint(udp::v4(), srcPort));
-    
-    for (;;) {
-          std::array<char, 128> recv_buf;
-          udp::endpoint remote_endpoint;
-          boost::system::error_code error;
-          socketPtr.get()->receive_from(boost::asio::buffer(recv_buf),
-              remote_endpoint, 0, error);
-          int port = remote_endpoint.port();
-          
-          std::vector<char> recvVec(128);
-          std::copy_n(recv_buf.begin(), 128, recvVec.begin());
-          
-          Datagram dg;
-          dg.consume(recvVec);
-          
-          //lock
-          std::unique_lock<std::mutex> lk(m);
-          
-          rt.update(dg.getSrc(), port, dg.getDV());
-          //std::cout << rt.toString();
-          
-          //unlock
-          lk.unlock();
 
-          //if (error && error != boost::asio::error::message_size)
-            //throw boost::system::system_error(error);
+    for (;;) {
+        std::array<char, 128> recv_buf;
+        udp::endpoint remote_endpoint;
+        boost::system::error_code error;
+        socketPtr.get()->receive_from(boost::asio::buffer(recv_buf),
+        remote_endpoint, 0, error);
+        int port = remote_endpoint.port();
+
+        std::vector<char> recvVec(128);
+        std::copy_n(recv_buf.begin(), 128, recvVec.begin());
+
+        Datagram dg;
+        dg.consume(recvVec);
+
+        char dest = dg.getDest();
+
+        if (dest != name) {
+            std::unique_lock<std::mutex> lk(m);
+            int destPort = rt.getPortTwrdsDest(dest);
+            lk.unlock();
+            send(destPort, dg, socketPtr);
+        } else {
+            if (dg.isDV()) {
+                //lock
+                std::unique_lock<std::mutex> lk(m);
+
+                rt.update(dg.getSrc(), port, dg.getDV());
+                //std::cout << rt.toString();
+
+                //unlock
+                lk.unlock();
+            }
         }
+    }
 }
 
 void send(int destPort, Datagram dg, boost::shared_ptr<udp::socket> socketPtr) {

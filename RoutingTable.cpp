@@ -1,5 +1,18 @@
 #include "RoutingTable.hpp"
 
+
+void RoutingTable::printChange(std::string stateBefore, std::map<char,double> dv, char src, int srcPort) {
+    std::time_t now = std::time(0);
+    std::string strdv = "Destination: Cost\n";
+    for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
+        strdv+= std::string("") + it->first + ":" + std::to_string(it->second) + "\n";
+    }
+    
+    std::cout << std::ctime(&now) << ":\nRouting table before modification:\n" << stateBefore 
+        << "\nDistance vector received from node: " << src << " via port " << std::to_string(srcPort) << ":\n"
+        << strdv << "\nRouting table after modification:\n" << this->toString() << "\n";
+}
+
 void RoutingTable::init(char name, std::string intFilePath) {
 	std::ifstream ifs(intFilePath);
 	std::string line;
@@ -76,16 +89,8 @@ std::map<char, int> RoutingTable::getNeighbours() {
 	return neighbours;
 }
 
-void RoutingTable::printChange(std::string stateBefore, std::map<char,double> dv, char src, int srcPort) {
-    std::time_t now = std::time(0);
-    std::string strdv = "Destination: Cost\n";
-    for (std::map<char, double>::iterator it = dv.begin(); it != dv.end(); ++it) {
-        strdv+= std::string("") + it->first + ":" + std::to_string(it->second) + "\n";
-    }
-    
-    std::cout << std::ctime(&now) << ":\nRouting table before modification:\n" << stateBefore 
-        << "\nDistance vector received from node: " << src << " via port " << std::to_string(srcPort) << ":\n"
-        << strdv << "\nRouting table after modification:\n" << this->toString() << "\n";
+int RoutingTable::getPortTwrdsDest(char dest) {
+    return entries[dest].nextNodePort;
 }
 
 std::string RoutingTable::toString() {
