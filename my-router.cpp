@@ -93,7 +93,7 @@ void genPacket(boost::shared_ptr<udp::socket> socketPtr) {
     
     send(srcPort, dg, socketPtr);
     
-    std::cout << "Packet sent";
+    std::cout << "Packet sent\n";
     
     std::ofstream outfile;
     outfile.open(std::string("routing-output") + name + ".txt");
