@@ -3,6 +3,8 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <ctime>
+#include <cmath>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
@@ -18,6 +20,9 @@ boost::asio::io_service io_service;
 std::mutex m;
 std::condition_variable cv;
 
+std::map<char, long> lastTimeReceived;
+#define check_time 5
+
 /**
 * Source for this method: https://techoverflow.net/2013/08/21/how-to-check-if-file-exists-using-stat/?q=/blog/2013/08/21/how-to-check-if-file-exists-using-stat/
 *
@@ -29,14 +34,47 @@ bool fileExists(const std::string& file) {
 	return (stat(file.c_str(), &buf) == 0);
 }
 
+
+void send(int destPort, Datagram dg, boost::shared_ptr<udp::socket> socketPtr) {
+    //boost::asio::io_service io_service;
+
+    udp::resolver resolver(io_service);
+    udp::resolver::query query(udp::v4(), "localhost", std::to_string(destPort));
+    udp::endpoint receiver_endpoint = *resolver.resolve(query);
+
+    //udp::socket socket(io_service, udp::endpoint(udp::v4(), srcPort));
+    
+    std::vector<char> toSend = dg.encode();
+    std::array<char, 128> send_buf;
+    std::copy_n(toSend.begin(), 128, send_buf.begin());
+    
+    socketPtr.get()->send_to(boost::asio::buffer(send_buf), receiver_endpoint);
+}
+
+void checkAliveThread() {
+    for(;;) {
+        sleep(1);
+        for (std::map<char, long>::iterator it = lastTimeReceived.begin(); it != lastTimeReceived.end(); ++it) {
+            time_t curTime = time(0);
+            if (abs(curTime - it->second) > check_time && it->first != name) {
+                //std::unique_lock<std::mutex> lk(m);
+                rt.setUnreachable(it->first);
+                lastTimeReceived.erase(it);
+                //lk.unlock();
+                std::cout << "\n" << it->first << " is unreachable\n" << curTime - it->second;
+            }
+        }
+    }
+}
+
 void packetGenThread(boost::shared_ptr<udp::socket> socketPtr) {
     std::cout << "To generate and send a packet, enter the destination (single capitalized character)";
     char dest;
     std::cin >> dest;
     std::cout << "Enter the data to send (as a string)";
     std::string data;
-    std::scin >> data;
-    DG dg;
+    std::cin >> data;
+    Datagram dg;
     dg.setSrc(name);
     dg.setDest(dest);
     dg.setData(data);
@@ -69,6 +107,7 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
         dg.consume(recvVec);
 
         char dest = dg.getDest();
+        lastTimeReceived[dg.getSrc()] = time(0);
 
         if (dest != name) {
             std::unique_lock<std::mutex> lk(m);
@@ -88,22 +127,6 @@ void receiveThread(boost::shared_ptr<udp::socket> socketPtr) {
             }
         }
     }
-}
-
-void send(int destPort, Datagram dg, boost::shared_ptr<udp::socket> socketPtr) {
-    //boost::asio::io_service io_service;
-
-    udp::resolver resolver(io_service);
-    udp::resolver::query query(udp::v4(), "localhost", std::to_string(destPort));
-    udp::endpoint receiver_endpoint = *resolver.resolve(query);
-
-    //udp::socket socket(io_service, udp::endpoint(udp::v4(), srcPort));
-    
-    std::vector<char> toSend = dg.encode();
-    std::array<char, 128> send_buf;
-    std::copy_n(toSend.begin(), 128, send_buf.begin());
-    
-    socketPtr.get()->send_to(boost::asio::buffer(send_buf), receiver_endpoint);
 }
 
 int main(int argc, char* argv[]) {
@@ -133,10 +156,21 @@ int main(int argc, char* argv[]) {
 	if (fileExists(file)) {
 		rt.init(name, file);
 	}
+	
+	std::map<char, int> neighbours = rt.getNeighbours();
+	for (std::map<char, int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it) {
+	    lastTimeReceived[it->first] = time(0);
+	}
 
 	//create the receiving thread
-	std::thread t(receiveThread, socketPtr);
-    t.detach();
+	std::thread tr(receiveThread, socketPtr);
+    tr.detach();
+    
+    //std::thread tg(packetGenThread, socketPtr);
+    //tg.detach();
+    
+    std::thread tc(checkAliveThread);
+    tc.detach();
 
 	//infinite loop
 	for (;;) {
